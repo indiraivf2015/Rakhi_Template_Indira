@@ -57,6 +57,32 @@
   .banner{margin-top:16px;}
   .banner-in{background:var(--warn-bg); border:1px solid var(--warn-br); color:#78350F; border-radius:var(--r-card); padding:10px 14px; font-size:13px; display:flex; gap:10px;}
   .banner.hide,.hide{display:none !important;}
+  .must{
+    margin-top:16px;
+    background:var(--accent-soft);
+    border:1.5px solid var(--accent);
+    border-radius:14px;
+    padding:14px 18px;
+    color:var(--accent);
+  }
+  .must-title{font-weight:700; font-size:15px; line-height:1.4; margin-bottom:8px;}
+  .must-list{
+    list-style:none;
+    counter-reset:must;
+    display:flex;
+    flex-direction:column;
+    gap:4px;
+    font-size:14px;
+    line-height:1.55;
+  }
+  .must-list li{counter-increment:must;}
+  .must-list li::before{content:counter(must) ". "; font-weight:700;}
+  .must-list strong{font-weight:700;}
+  @media (min-width:641px){
+    .must{padding:16px 22px;}
+    .must-title{font-size:16px;}
+    .must-list{font-size:15px; gap:6px;}
+  }
 
   .steps{margin-top:20px; display:flex; gap:12px; flex-wrap:wrap; align-items:stretch;}
   .card{background:var(--surface); border:1px solid var(--border); border-radius:var(--r-card); padding:12px 14px; display:flex; gap:12px; align-items:center; min-height:64px;}
@@ -76,11 +102,24 @@
   .card input[type=file]{display:none;}
   #photoCard{flex-wrap:wrap;}
   .photo-pick{cursor:pointer; min-width:0; flex:1 1 160px;}
+  .photo-pick .c-name{font-weight:700;}
   .card.actions{flex:0 0 auto; gap:8px; flex-wrap:wrap; margin-left:auto;}
   .card.actions .btn{white-space:nowrap;}
-  .card.fields{flex:1 1 100%; align-items:flex-end; min-height:72px;}
-  .card.fields .fld{flex:1 1 160px; min-width:0;}
-  .card.fields .fld input{width:100%; min-width:0;}
+  .card.fields{
+    flex:1 1 100%;
+    align-items:flex-end;
+    gap:12px;
+    min-height:72px;
+    width:100%;
+  }
+  .fields-stack{
+    display:flex;
+    flex:1 1 auto;
+    gap:12px 16px;
+    min-width:0;
+  }
+  .fields-stack .fld{flex:1 1 0; min-width:0;}
+  .fields-stack .fld input{width:100%; min-width:0;}
   .mobile-dl{margin-top:12px;}
   .mobile-dl:empty{display:none;}
   .mobile-dl .card.actions{margin-left:0; width:100%; justify-content:stretch;}
@@ -163,6 +202,44 @@
 
   .toast{position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:var(--text); color:#fff; padding:8px 16px; border-radius:var(--r-input); font-size:13px; opacity:0; pointer-events:none; transition:opacity 150ms ease; max-width:92vw; text-align:center; z-index:60;}
   .toast.show{opacity:1;}
+  @media (max-width:640px){
+    .wrap{padding:0 16px;}
+    .steps{flex-direction:column;}
+    #photoCard,.card.actions,.card.fields{width:100%; margin-left:0;}
+    #photoCard{
+      display:grid;
+      grid-template-columns:22px 1fr;
+      align-items:start;
+      gap:10px 12px;
+      padding:16px;
+      flex:none;
+      height:auto;
+      min-height:0;
+      flex-wrap:nowrap;
+    }
+    #photoCard .num{grid-column:1; grid-row:1; margin-top:2px;}
+    #photoCard .photo-pick{grid-column:2; grid-row:1; flex:none; width:auto;}
+    #photoCard .card-split,
+    #photoCard input[type=file]{display:none;}
+    #photoCard .layout-fld{
+      grid-column:2;
+      grid-row:2;
+      flex:none;
+      width:100%;
+      min-width:0;
+      margin-top:4px;
+    }
+    #photoCard .layout-fld select{width:100%; min-width:0;}
+    .card.fields{align-items:flex-start;}
+    .card.fields .num{margin-top:22px;}
+    .fields-stack{
+      flex-direction:column;
+      width:100%;
+      gap:12px;
+    }
+    .fields-stack .fld{flex:none; width:100%;}
+    .fields-stack .fld input{width:100%; min-width:0;}
+  }
   @media (prefers-reduced-motion:reduce){ *{transition:none !important;} }
 </style>
 </head>
@@ -182,6 +259,15 @@
   <div class="banner hide" id="banner"><div class="banner-in"><span>i</span>
     <span><strong>Preview mode.</strong> This page is inside a preview frame, which blocks file saving. Download this HTML file and open it in Chrome for one-click PNG and ZIP downloads.</span>
   </div></div>
+
+  <aside class="must" aria-label="Mandatory steps">
+    <p class="must-title">Mandatory steps · Create your Rakhi creative</p>
+    <ol class="must-list">
+      <li><strong>Step 1:</strong> Upload your photo.</li>
+      <li><strong>Step 2:</strong> Write your <strong>Name</strong> and <strong>Designation</strong>.</li>
+      <li><strong>Step 3:</strong> Download the image.</li>
+    </ol>
+  </aside>
 
   <div class="steps">
     <div class="card" id="modeCard">
@@ -227,9 +313,11 @@
 
     <div class="card fields" id="fieldsCard">
       <span class="num">2</span>
-      <div class="fld"><label for="nameInput">Name</label><input id="nameInput" placeholder="Full name" autocomplete="off"></div>
-      <div class="fld"><label for="desgInput">Designation</label><input id="desgInput" placeholder="Write your designation" autocomplete="off"></div>
-      <div class="fld" id="locFld"><label for="locInput">Location</label><input id="locInput" placeholder="e.g. Kolkata" autocomplete="off"></div>
+      <div class="fields-stack">
+        <div class="fld"><label for="nameInput">Name</label><input id="nameInput" placeholder="Full name" autocomplete="off"></div>
+        <div class="fld"><label for="desgInput">Designation</label><input id="desgInput" placeholder="Write your designation" autocomplete="off"></div>
+        <div class="fld" id="locFld"><label for="locInput">Location</label><input id="locInput" placeholder="e.g. Kolkata" autocomplete="off"></div>
+      </div>
     </div>
   </div>
 
