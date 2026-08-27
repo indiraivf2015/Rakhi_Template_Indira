@@ -293,7 +293,7 @@
 
 <script>
 "use strict";
-const VERSION = 'v4.9 · Rakshabandhan 2026';
+const VERSION = 'v4.12 · Rakshabandhan 2026';
 
 const BUILTIN = {
   employee: 'templates/employee-rakshabandhan.png',
@@ -310,10 +310,12 @@ const PRESETS = {
     name: { baseline: 738, size: 20, weight: 700, fill: '#A51C30' },
     desg: { baseline: 765, size: 15, weight: 400, fill: '#4A4A4A' },
     loc:  { baseline: 789, size: 15, weight: 400, fill: '#4A4A4A', prefix: 'Indira IVF, ' },
+    paperY: [708, 714],
+    paperMaxX: 278,
     textCover: [
-      { box: [88, 716, 286, 746] },
-      { box: [88, 750, 250, 774] },
-      { box: [80, 774, 255, 800] }
+      { box: [80, 714, 286, 748] },
+      { box: [84, 748, 240, 778] },
+      { box: [80, 772, 250, 804] }
     ]
   },
   doctor: {
@@ -325,10 +327,12 @@ const PRESETS = {
     name: { baseline: 676, size: 20, weight: 700, fill: '#A51C30' },
     desg: { baseline: 703, size: 15, weight: 400, fill: '#4A4A4A' },
     loc:  { baseline: 727, size: 14, weight: 400, fill: '#4A4A4A', prefix: 'Indira IVF, ' },
+    paperY: [642, 654],
+    paperMaxX: 280,
     textCover: [
-      { box: [137, 657, 257, 680] },
-      { box: [131, 689, 261, 707] },
-      { box: [123, 714, 271, 731] }
+      { box: [128, 654, 268, 684] },
+      { box: [122, 684, 272, 712] },
+      { box: [114, 710, 280, 738] }
     ]
   }
 };
@@ -479,25 +483,22 @@ function isPaperPx(r, g, b){
   const sat = Math.max(r, g, b) - Math.min(r, g, b);
   return avg >= 208 && sat <= 58 && (r - g) < 32 && (r - b) < 58;
 }
-function columnPaper(src, w, x, y0, off){
-  for (let dy = off; dy < off + 12; dy++){
-    const y = y0 - dy;
-    if (y < 0) break;
-    const i = (y * w + x) * 4;
+function pickPaper(src, w, h, x, y, paperY0, paperY1, paperMaxX){
+  const xx = Math.max(0, Math.min(w - 1, Math.min(x, paperMaxX)));
+  const span = Math.max(1, paperY1 - paperY0);
+  for (let k = 0; k < span; k++){
+    const sy = paperY0 + ((y + k) % span);
+    if (sy < 0 || sy >= h) continue;
+    const i = (sy * w + xx) * 4;
     if (isPaperPx(src[i], src[i + 1], src[i + 2]) && (src[i] - src[i + 1]) < 28) return i;
   }
-  for (let k = 0; k < 8; k++){
-    const xx = Math.max(0, Math.min(w - 1, x + (k % 2 ? 1 : -1) * (1 + (k >> 1))));
-    for (let dy = 2; dy < 14; dy++){
-      const y = y0 - dy;
-      if (y < 0) break;
-      const i = (y * w + xx) * 4;
-      if (isPaperPx(src[i], src[i + 1], src[i + 2]) && (src[i] - src[i + 1]) < 28) return i;
-    }
+  for (let lx = xx - 1; lx >= Math.max(0, xx - 52); lx--){
+    const i = (y * w + lx) * 4;
+    if (isPaperPx(src[i], src[i + 1], src[i + 2])) return i;
   }
-  return (Math.max(0, y0 - 3) * w + x) * 4;
+  return (Math.max(0, paperY0) * w + xx) * 4;
 }
-function coverPlaceholderLines(ctx, orig, covers, filled){
+function coverPlaceholderLines(ctx, orig, covers, filled, paperY, paperMaxX){
   if (!orig || !covers || !covers.length || !filled.some(Boolean)) return;
   const w = orig.width, h = orig.height;
   const tmp = document.createElement('canvas');
@@ -507,17 +508,27 @@ function coverPlaceholderLines(ctx, orig, covers, filled){
   const src = tctx.getImageData(0, 0, w, h).data;
   const dest = ctx.getImageData(0, 0, w, h);
   const out = dest.data;
-
-  covers.forEach((cover, idx) => {
-    if (!filled[idx] || !cover) return;
-    let [x0, y0, x1, y1] = cover.box;
+  const band = paperY && paperY.length === 2 ? paperY : [covers[0].box[1] - 14, covers[0].box[1] - 2];
+  const maxX = paperMaxX == null ? w - 1 : paperMaxX;
+  let boxes = [];
+  if (filled[0] && filled[1] && filled[2]){
+    let x0 = w, y0 = h, x1 = 0, y1 = 0;
+    covers.forEach(c => {
+      x0 = Math.min(x0, c.box[0]); y0 = Math.min(y0, c.box[1]);
+      x1 = Math.max(x1, c.box[2]); y1 = Math.max(y1, c.box[3]);
+    });
+    boxes.push([x0, y0, x1, y1]);
+  } else {
+    covers.forEach((c, idx) => { if (filled[idx]) boxes.push(c.box); });
+  }
+  boxes.forEach(box => {
+    let [x0, y0, x1, y1] = box;
     x0 = Math.max(0, x0); y0 = Math.max(0, y0);
     x1 = Math.min(w, x1); y1 = Math.min(h, y1);
     if (x1 - x0 < 2 || y1 - y0 < 2) return;
     for (let y = y0; y < y1; y++){
-      const off = 2 + ((y - y0) % 8);
       for (let x = x0; x < x1; x++){
-        const pi = columnPaper(src, w, x, y0, off);
+        const pi = pickPaper(src, w, h, x, y, band[0], band[1], maxX);
         const i = (y * w + x) * 4;
         out[i] = src[pi];
         out[i + 1] = src[pi + 1];
@@ -872,7 +883,7 @@ function drawCreative(ctx, W, person){
   const name = person && person.name.trim();
   const desg = person && person.desg.trim();
   const loc = p.loc && person && person.loc.trim();
-  coverPlaceholderLines(nctx, tplRaw, p.textCover || [], [!!name, !!desg, !!loc]);
+  coverPlaceholderLines(nctx, tplRaw, p.textCover || [], [!!name, !!desg, !!loc], p.paperY, p.paperMaxX);
 
   nctx.textAlign = p.align === 'center' ? 'center' : 'left';
   nctx.textBaseline = 'alphabetic';
